@@ -12,10 +12,13 @@ data Val = ValInt Integer
 getInt :: Val -> Integer
 getInt (ValInt x) = x
 
+evalBin :: (Integer -> Integer -> Integer) -> Exp -> Exp -> Val
+evalBin op x y = ValInt (op (getInt (eval x)) (getInt (eval y)))
+
 eval :: Exp -> Val
 eval (CstInt x) = ValInt x
-eval (Add x y) = ValInt ((getInt (eval x)) + (getInt (eval y)))
-eval (Sub x y) = ValInt ((getInt (eval x)) - (getInt (eval y)))
-eval (Mul x y) = ValInt ((getInt (eval x)) * (getInt (eval y)))
-eval (Div x y) = ValInt ((getInt (eval x)) `div` (getInt (eval y)))
-eval (Pow x y) = ValInt ((getInt (eval x)) ^ (getInt (eval y)))
+eval (Add x y) = evalBin (+) x y
+eval (Sub x y) = evalBin (-) x y
+eval (Mul x y) = evalBin (*) x y
+eval (Div x y) = evalBin div x y
+eval (Pow x y) = evalBin (^) x y
