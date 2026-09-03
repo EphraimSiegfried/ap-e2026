@@ -6,23 +6,25 @@ where
 
 import APL.AST
 
-data Val = ValInt Integer
+data Val
+  = ValInt Integer
+  | ValBool Bool
   deriving (Eq, Show)
-
-getInt :: Val -> Integer
-getInt (ValInt x) = x
 
 type Error = String
 
 evalBin :: (Integer -> Integer -> Integer) -> Exp -> Exp -> Either Error Val
-evalBin op x y = case eval x of
-  Left ex -> Left ex
-  Right xv -> case eval y of
-    Left ey -> Left ey
-    Right yv -> Right (ValInt (op (getInt xv) (getInt yv)))
+evalBin op x y = case (eval x, eval y) of
+  (Left ex, _) -> Left ex
+  (_, Left ey) -> Left ey
+  (Right (ValInt xi), Right (ValInt yi)) -> Right (ValInt (op xi yi))
+  (Right (ValBool xi), Right (ValBool yi)) -> Right (ValBool (op xi yi))
+  _ -> Left "Error: Left and right operand aren't the same type"
 
 eval :: Exp -> Either Error Val
 eval (CstInt x) = Right (ValInt x)
+eval (CstBool x) = Right (ValBool x)
+eval (Eql x y) = evalBin (==) x y
 eval (Add x y) = evalBin (+) x y
 eval (Sub x y) = evalBin (-) x y
 eval (Mul x y) = evalBin (*) x y

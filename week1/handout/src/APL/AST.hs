@@ -5,6 +5,9 @@ where
 
 data Exp
   = CstInt Integer
+  | CstBool Bool
+  | Eql Exp Exp
+  | If Exp Exp
   | Add Exp Exp
   | Sub Exp Exp
   | Mul Exp Exp
