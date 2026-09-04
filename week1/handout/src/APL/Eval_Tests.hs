@@ -28,5 +28,17 @@ tests =
       testCase "Divide by zero throws error" $
         eval (Div (CstInt 9) (CstInt 0)) @?= Left "Error: Divide by zero",
       testCase "Negative exponent throws error" $
-        eval (Pow (CstInt 9) (CstInt (-1))) @?= Left "Error: Negative exponent"
+        eval (Pow (CstInt 9) (CstInt (-1))) @?= Left "Error: Negative exponent",
+      testCase "Equality Ints" $
+        eval (Eql (CstInt 9) (CstInt 9)) @?= Right (ValBool True),
+      testCase "Equality Bools" $
+        eval (Eql (CstBool False) (CstBool False)) @?= Right (ValBool True),
+      testCase "Equality with different types throws error" $
+        eval (Eql (CstBool False) (CstInt 2)) @?= Left "Error: Left and right operand aren't the same type",
+      testCase "If then branch" $
+        eval (If (Eql (CstInt 0) (CstInt 0)) (CstBool True) (CstInt 60)) @?= Right (ValBool True),
+      testCase "If else branch" $
+        eval (If (Eql (CstInt 2) (CstInt 1)) (CstInt 50) (CstInt 60)) @?= Right (ValInt 60),
+      testCase "If condition evaluating to integer throws error" $
+        eval (If (Add (CstInt 2) (CstInt 1)) (CstInt 50) (CstInt 60)) @?= Left "Error: Couldn't evaluate if condition"
     ]
