@@ -1,7 +1,10 @@
 module APL.AST
   ( Exp (..),
+    VName,
   )
 where
+
+type VName = String
 
 data Exp
   = CstInt Integer
@@ -13,4 +16,6 @@ data Exp
   | Mul Exp Exp
   | Div Exp Exp
   | Pow Exp Exp
+  | Var VName
+  | Let VName Exp Exp
   deriving (Eq, Show)

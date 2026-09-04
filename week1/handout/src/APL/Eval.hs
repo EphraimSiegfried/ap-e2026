@@ -1,6 +1,7 @@
 module APL.Eval
   ( eval,
     Val (..),
+    envEmpty,
   )
 where
 
@@ -13,36 +14,55 @@ data Val
 
 type Error = String
 
-evalBinInt :: (Integer -> Integer -> Integer) -> Exp -> Exp -> Either Error Val
-evalBinInt op x y = case (eval x, eval y) of
+type Env = [(VName, Val)]
+
+envEmpty :: Env
+envEmpty = []
+
+envExtend :: VName -> Val -> Env -> Env
+envExtend name v env = [(name, v)] ++ env
+
+envLookup :: VName -> Env -> Maybe Val
+envLookup = lookup
+
+evalBinInt :: Env -> (Integer -> Integer -> Integer) -> Exp -> Exp -> Either Error Val
+evalBinInt env op x y = case (eval env x, eval env y) of
   (Left ex, _) -> Left ex
   (_, Left ey) -> Left ey
   (Right (ValInt xi), Right (ValInt yi)) -> Right (ValInt (op xi yi))
   _ -> Left "Error: Left and right operand aren't the same type"
 
-evalEql :: Exp -> Exp -> Either Error Val
-evalEql x y = case (eval x, eval y) of
+evalEql :: Env -> Exp -> Exp -> Either Error Val
+evalEql env x y = case (eval env x, eval env y) of
   (Left ex, _) -> Left ex
   (_, Left ey) -> Left ey
   (Right (ValBool xi), Right (ValBool yi)) -> Right (ValBool (xi == yi))
   (Right (ValInt xb), Right (ValInt yb)) -> Right (ValBool (xb == yb))
   _ -> Left "Error: Left and right operand aren't the same type"
 
-evalIf :: Exp -> Exp -> Exp -> Either Error Val
-evalIf cond thenb elseb = case (eval cond) of
-  (Right (ValBool True)) -> eval thenb
-  (Right (ValBool False)) -> eval elseb
+evalIf :: Env -> Exp -> Exp -> Exp -> Either Error Val
+evalIf env cond thenb elseb = case (eval env cond) of
+  (Right (ValBool True)) -> eval env thenb
+  (Right (ValBool False)) -> eval env elseb
   (Left e) -> Left e
   _ -> Left "Error: Couldn't evaluate if condition"
 
-eval :: Exp -> Either Error Val
-eval (CstInt x) = Right (ValInt x)
-eval (CstBool x) = Right (ValBool x)
-eval (Eql x y) = evalEql x y
-eval (If x y z) = evalIf x y z
-eval (Add x y) = evalBinInt (+) x y
-eval (Sub x y) = evalBinInt (-) x y
-eval (Mul x y) = evalBinInt (*) x y
-eval (Div x y) = if eval y == Right (ValInt 0) then Left "Error: Divide by zero" else evalBinInt div x y
-eval (Pow x (CstInt y)) = if y >= 0 then evalBinInt (^) x (CstInt y) else Left "Error: Negative exponent"
-eval (Pow x y) = evalBinInt (^) x y
+eval :: Env -> Exp -> Either Error Val
+eval _ (CstInt x) = Right (ValInt x)
+eval _ (CstBool x) = Right (ValBool x)
+eval env (Eql x y) = evalEql env x y
+eval env (If x y z) = evalIf env x y z
+eval env (Add x y) = evalBinInt env (+) x y
+eval env (Sub x y) = evalBinInt env (-) x y
+eval env (Mul x y) = evalBinInt env (*) x y
+eval env (Div x y) = if eval env y == Right (ValInt 0) then Left "Error: Divide by zero" else evalBinInt env div x y
+eval env (Pow x (CstInt y)) = if y >= 0 then evalBinInt env (^) x (CstInt y) else Left "Error: Negative exponent"
+eval env (Pow x y) = evalBinInt env (^) x y
+eval env (Var name) = case (envLookup name env) of
+  Just x -> Right x
+  Nothing -> Left "Error: Variable undefined"
+eval env (Let name x y) = case (eval env x) of
+  Left e -> Left e
+  Right v ->
+    let newEnv = envExtend name v env
+     in eval newEnv y
