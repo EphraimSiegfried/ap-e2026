@@ -69,30 +69,36 @@ instance (Functor e) => Monad (Free e) where
 
 data EvalOp a
   = ReadOp (Env -> a)
+  | StateGetOp (State -> a)
+  | StatePutOp State a
 
 instance Functor EvalOp where
-  fmap f (ReadOp k) = error "TODO"
+  fmap f (ReadOp k) = ReadOp $ f . k
+  fmap f (StateGetOp k) = StateGetOp $ f . k
+  fmap f (StatePutOp s c) = StatePutOp s (f c)
 
 type EvalM a = Free EvalOp a
 
 askEnv :: EvalM Env
 askEnv = Free $ ReadOp $ \env -> pure env
 
+getState :: EvalM State
+getState = Free $ StateGetOp $ \state -> pure state
+
+putState :: State -> EvalM ()
+putState s = Free $ StatePutOp s $ pure ()
+
+modifyState :: (State -> State) -> EvalM ()
+modifyState f = do
+  s <- getState
+  putState f s
+
 modifyEffects :: (Functor e, Functor h) => (e (Free e a) -> h (Free e a)) -> Free e a -> Free h a
 modifyEffects _ (Pure x) = Pure x
-modifyEffects g (Free e) = error "TODO"
+modifyEffects g (Free e) = Free (fmap (modifyEffects g) (g e))
 
 localEnv :: (Env -> Env) -> EvalM a -> EvalM a
 localEnv = error "TODO"
-
-getState :: EvalM State
-getState = error "TODO"
-
-putState :: State -> EvalM ()
-putState = error "TODO"
-
-modifyState :: (State -> State) -> EvalM ()
-modifyState = error "TODO"
 
 evalPrint :: String -> EvalM ()
 evalPrint = error "TODO"
