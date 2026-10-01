@@ -91,7 +91,7 @@ putState s = Free $ StatePutOp s $ pure ()
 modifyState :: (State -> State) -> EvalM ()
 modifyState f = do
   s <- getState
-  putState f s
+  putState $ f s
 
 modifyEffects :: (Functor e, Functor h) => (e (Free e a) -> h (Free e a)) -> Free e a -> Free h a
 modifyEffects _ (Pure x) = Pure x
