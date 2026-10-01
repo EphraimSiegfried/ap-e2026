@@ -6,5 +6,7 @@ runEval :: EvalM a -> a
 runEval = runEval' envEmpty
   where
     runEval' :: Env -> EvalM a -> a
-    runEval' _ (Pure x) = error "TODO"
-    runEval' r (Free (ReadOp k)) = error "TODO"
+    runEval' _ (Pure x) = x
+    runEval' r (Free (ReadOp k)) =
+      let s = k r
+       in runEval' r $ s
