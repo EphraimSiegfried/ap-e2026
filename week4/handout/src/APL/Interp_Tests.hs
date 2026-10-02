@@ -10,7 +10,7 @@ import Control.Arrow (Arrow (first))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 
-eval' :: Exp -> Val
+eval' :: Exp -> ([String], Val)
 eval' = runEval . eval
 
 evalIO' :: Exp -> IO (Either Error Val)
@@ -23,9 +23,10 @@ pureTests :: TestTree
 pureTests =
   testGroup
     "Pure interpreter"
-    [ testCase "Pure" $ runEval (Pure 2) @?= 2,
-      testCase "ReadOP" $ runEval (Free (ReadOp (\_ -> (Pure 2)))) @?= 2,
-      testCase "StatePutOp" $ runEval (Free (StatePutOp [(ValInt 10, ValInt 10)] (Free (StateGetOp (\e -> (Pure e)))))) @?= [(ValInt 10, ValInt 10)]
+    [ testCase "StatePutOp" $ runEval (Free (StatePutOp [(ValInt 10, ValInt 10)] (Free (StateGetOp (\e -> (Pure e)))))) @?= ([], [(ValInt 10, ValInt 10)]),
+      testCase "Let" $ eval' (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x")) @?= ([], ValInt 5),
+      testCase "localEnv" $ runEval (localEnv (const [("x", ValInt 1)]) $ askEnv) @?= ([], [("x", ValInt 1)]),
+      testCase "Print" $ runEval (evalPrint "hi") @?= (["hi"], ())
     ]
 
 ioTests :: TestTree

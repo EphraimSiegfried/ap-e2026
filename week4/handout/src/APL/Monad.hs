@@ -71,11 +71,15 @@ data EvalOp a
   = ReadOp (Env -> a)
   | StateGetOp (State -> a)
   | StatePutOp State a
+  | PrintOp String a
+  | ErrorOp Error
 
 instance Functor EvalOp where
   fmap f (ReadOp k) = ReadOp $ f . k
   fmap f (StateGetOp k) = StateGetOp $ f . k
   fmap f (StatePutOp s c) = StatePutOp s (f c)
+  fmap f (PrintOp s c) = PrintOp s (f c)
+  fmap _ (ErrorOp c) = ErrorOp c
 
 type EvalM a = Free EvalOp a
 
@@ -98,10 +102,14 @@ modifyEffects _ (Pure x) = Pure x
 modifyEffects g (Free e) = Free (fmap (modifyEffects g) (g e))
 
 localEnv :: (Env -> Env) -> EvalM a -> EvalM a
-localEnv = error "TODO"
+localEnv f k =
+  let g :: EvalOp a -> EvalOp a
+      g (ReadOp o) = ReadOp $ \env -> o (f env)
+      g x = x
+   in modifyEffects g k
 
 evalPrint :: String -> EvalM ()
-evalPrint = error "TODO"
+evalPrint s = Free $ PrintOp s $ pure ()
 
 failure :: String -> EvalM a
 failure = error "TODO"
