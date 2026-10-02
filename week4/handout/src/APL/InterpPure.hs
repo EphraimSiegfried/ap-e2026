@@ -2,11 +2,11 @@ module APL.InterpPure (runEval) where
 
 import APL.Monad
 
-runEval :: EvalM a -> ([String], a)
+runEval :: EvalM a -> ([String], Either Error a)
 runEval = runEval' envEmpty stateInitial
   where
-    runEval' :: Env -> State -> EvalM a -> ([String], a)
-    runEval' _ _ (Pure x) = ([], x)
+    runEval' :: Env -> State -> EvalM a -> ([String], Either Error a)
+    runEval' _ _ (Pure x) = ([], Right x)
     runEval' r st (Free (ReadOp k)) =
       let s = k r
        in runEval' r st s
@@ -17,3 +17,4 @@ runEval = runEval' envEmpty stateInitial
     runEval' env state (Free (PrintOp s c)) =
       let (out, val) = runEval' env state c
        in (s : out, val)
+    runEval' _ _ (Free (ErrorOp s)) = ([], Left s)

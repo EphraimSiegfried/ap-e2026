@@ -112,7 +112,7 @@ evalPrint :: String -> EvalM ()
 evalPrint s = Free $ PrintOp s $ pure ()
 
 failure :: String -> EvalM a
-failure = error "TODO"
+failure s = Free $ ErrorOp s
 
 catch :: EvalM a -> EvalM a -> EvalM a
 catch = error "To be completed in assignment 4."
