@@ -169,7 +169,7 @@ reduce = fold -- default implementation
 selectFromWhere :: Func a b -> MSet a -> Pred a -> MSet b
 selectFromWhere f s p = perform f (select p s)
 
--- Tests:
+-- Examples:
 
 s1 = MSet [1, 2, 3]
 s2 = MSet [10, 25, 30, 40]
