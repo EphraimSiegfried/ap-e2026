@@ -1,0 +1,242 @@
+% sql4-vs-sqlite.tex
+%
+% SQL4 vs. SQLite: a scaling comparison
+% Fritz Henglein, Department of Computer Science, University of Copenhagen (DIKU)
+% Advanced Programming, DIKU, 2026-10-20
+%
+% Standalone slide deck, separate from generic-discrimination.tex, reusing the
+% same KU look and feel. Shows the correspondence between SQL queries and
+% SQL4 (src/SQL4.hs) functions, and the measured run times of SQL4 (compiled
+% with -O2) against SQLite (data bulk-loaded via its fastest CSV .import path
+% under synchronous=OFF/journal_mode=OFF/temp_store=MEMORY) on identical
+% generated inputs.
+% Compile with:   pdflatex sql4-vs-sqlite.tex
+
+\documentclass{beamer}
+
+% ---------------------------------------------------------------------------
+% KU look and feel (same as generic-discrimination.tex)
+% ---------------------------------------------------------------------------
+\useinnertheme[shadow=true]{rounded}
+
+\definecolor{kugreen}{RGB}{50,93,61}
+\usecolortheme[named=kugreen]{structure}
+\setbeamercolor{frametitle}{fg=kugreen}
+\setbeamercolor{title}{fg=white,bg=kugreen}
+\setbeamercolor{block title}{fg=white,bg=kugreen}
+\setbeamercolor{block body}{fg=black,bg=kugreen!25}
+
+\setbeamerfont{frametitle}{size=\Large,series=\bfseries}
+\setbeamerfont{block title}{size=\normalsize}
+\setbeamertemplate{navigation symbols}{}
+
+\usepackage{listings}
+\lstset{%
+  language=Haskell,
+  keywords={case,class,data,deriving,do,else,if,import,in,infix,infixl,
+            infixr,instance,let,module,newtype,of,then,type,where},
+  basicstyle=\upshape\ttfamily,
+  keywordstyle=\color{kugreen},
+  columns=fixed,
+  basewidth=0.5em,
+  keepspaces=true,
+  showstringspaces=false}
+
+\usepackage{booktabs}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+\newcommand{\kubackground}[1]{%
+  \setbeamertemplate{background}{%
+    \includegraphics[width=\paperwidth,height=\paperheight]{#1}}}
+\kubackground{figures/ku-background}
+
+\newlength{\kutitletop}     \setlength{\kutitletop}{16.54pt}
+\newlength{\kutitleindent}  \setlength{\kutitleindent}{14.54pt}
+\newlength{\kutitlebottom}  \setlength{\kutitlebottom}{-6.61pt}
+\setbeamertemplate{frametitle}{%
+  \vskip\kutitletop
+  \begin{beamercolorbox}[wd=\paperwidth,leftskip=\kutitleindent,
+                         rightskip=0pt plus 1fil]{frametitle}%
+    \usebeamerfont{frametitle}\strut\insertframetitle\strut\par
+  \end{beamercolorbox}%
+  \vskip\kutitlebottom}
+
+\newlength{\kufootheight}   \setlength{\kufootheight}{13.92pt}
+\setbeamertemplate{footline}{%
+  \vbox to\kufootheight{%
+    \vfil
+    \hbox to\paperwidth{\hskip5pt\usebeamerfont{footline}\tiny
+      \insertframenumber\hfil}%
+    \vskip10pt}}
+
+\newlength{\kutitlepagetop}  \setlength{\kutitlepagetop}{39.45pt}
+\newlength{\kudateskip}      \setlength{\kudateskip}{2pt}
+\setbeamertemplate{title page}{%
+  \vskip\kutitlepagetop
+  \begingroup
+    \centering
+    \begin{beamercolorbox}[sep=4pt,center,colsep=-4bp,rounded=true,
+                           shadow=true]{title}
+      \usebeamerfont{title}\inserttitle\par
+    \end{beamercolorbox}%
+    \vskip1em\par
+    \begin{beamercolorbox}[sep=8pt,center]{author}
+      \usebeamerfont{author}\insertauthor
+    \end{beamercolorbox}
+    \begin{beamercolorbox}[sep=8pt,center]{institute}
+      \usebeamerfont{institute}\insertinstitute
+    \end{beamercolorbox}
+    \vskip\kudateskip
+    \begin{beamercolorbox}[sep=8pt,center]{date}
+      \usebeamerfont{date}\insertdate
+    \end{beamercolorbox}
+  \endgroup
+  \vskip0pt plus 1filll}
+
+% ---------------------------------------------------------------------------
+% Shared style for the three scaling plots: linear-linear axes, grouped bars
+% (SQLite query, SQLite load, SQL4), one bar triple per measured input size n.
+% ---------------------------------------------------------------------------
+\pgfplotsset{
+  benchplot/.style={
+    width=\textwidth, height=0.72\textheight,
+    xlabel={$n$ (input size, millions)},
+    ylabel={time (s)},
+    ybar,
+    bar width=4pt,
+    enlarge x limits={abs=10pt},
+    ymajorgrids,
+    axis x line*=bottom,
+    axis y line*=left,
+    legend style={at={(0.02,0.98)},anchor=north west,font=\scriptsize,
+                  draw=kugreen,fill=white},
+    tick label style={font=\scriptsize},
+    label style={font=\scriptsize},
+  }
+}
+
+\title{SQL4 vs.\ SQLite}
+\author{Fritz Henglein\\ \texttt{henglein@diku.dk}}
+\institute{Department of Computer Science\\ University of Copenhagen\\ (DIKU)}
+\date{Advanced Programming, DIKU, 2026-10-20}
+
+\begin{document}
+
+% ===========================================================================
+{\kubackground{figures/ku-background-title}
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+}
+
+% ===========================================================================
+\begin{frame}[fragile]{SQL queries and SQL4 functions}
+  Rows: $(\mathit{key}, \mathit{payload})$ pairs with $\mathit{key}$ uniform
+  on $[0, 1000)$;\\
+  \lstinline|eKey = NatE 999|\quad (equivalence on keys)\\
+  \lstinline|eRow = MapE fst (NatE 999)|\quad (equivalence on whole rows)
+  \vspace{0.3cm}
+
+  \renewcommand{\arraystretch}{1.6}
+  \begin{center}
+  \scriptsize
+  \begin{tabular}{@{}p{0.37\textwidth}@{\hspace{0.8em}}p{0.57\textwidth}@{}}
+    \toprule
+    \textbf{SQL query} & \textbf{SQL4 (\texttt{src/SQL4.hs}) function} \\
+    \midrule
+    \texttt{SELECT * FROM r, s}\newline
+    \texttt{WHERE r.key = s.key} &
+    \lstinline|select ((fst,fst) `Is` eKey) (r `X` s)|\newline
+    \emph{(dispatches to \lstinline|djoin|)} \\
+    \texttt{SELECT key, COUNT(*)}\newline
+    \texttt{FROM r GROUP BY key} &
+    \lstinline|perform (Func count) (groupBy eRow r)| \\
+    \texttt{SELECT DISTINCT key FROM r} &
+    \lstinline|coalesceBy eKey (perform (Func fst) r)| \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+% ===========================================================================
+\begin{frame}{Performance: equi-join}
+  \begin{center}
+  \begin{tikzpicture}
+    \begin{axis}[benchplot,
+        xtick={0,4,8,12,16,20,24},
+      ]
+      \addplot+[bar shift=-5pt, fill=kugreen!70, draw=kugreen] coordinates {
+        (0.4,0.064) (0.8,0.128) (1.6,0.284) (3.2,0.537)
+        (6.4,1.227) (12.8,2.885) (23,5.978)
+      };
+      \addplot+[bar shift=0pt, fill=kugreen!25, draw=kugreen] coordinates {
+        (0.4,0.340) (0.8,0.666) (1.6,1.348) (3.2,2.703)
+        (6.4,5.489) (12.8,10.852) (23,19.893)
+      };
+      \addplot+[bar shift=5pt, fill=gray!60, draw=black] coordinates {
+        (0.4,0.170) (0.8,0.348) (1.6,0.734) (3.2,1.517)
+        (6.4,3.278) (12.8,7.082) (23,14.475)
+      };
+      \legend{SQLite query, SQLite load, SQL4}
+    \end{axis}
+  \end{tikzpicture}
+  \end{center}
+  \footnotesize \texttt{SELECT * FROM r, s WHERE r.key = s.key}
+  (cardinality only: enumerating the result is intractable, e.g.\ $5.29
+  \times 10^{11}$ matches at $n = 23{,}000{,}000$)
+\end{frame}
+
+% ===========================================================================
+\begin{frame}{Performance: group by + count}
+  \begin{center}
+  \begin{tikzpicture}
+    \begin{axis}[benchplot,
+        xtick={0,10,20,30,40,50,61},
+      ]
+      \addplot+[bar shift=-5pt, fill=kugreen!70, draw=kugreen] coordinates {
+        (1,0.148) (4,0.691) (16,3.629) (32,8.671)
+        (48,13.489) (61,17.528)
+      };
+      \addplot+[bar shift=0pt, fill=kugreen!25, draw=kugreen] coordinates {
+        (1,0.840) (4,3.370) (16,13.800) (32,28.079)
+        (48,42.812) (61,55.322)
+      };
+      \addplot+[bar shift=5pt, fill=gray!60, draw=black] coordinates {
+        (1,0.149) (4,0.673) (16,3.279) (32,7.050)
+        (48,11.001) (61,18.233)
+      };
+      \legend{SQLite query, SQLite load, SQL4}
+    \end{axis}
+  \end{tikzpicture}
+  \end{center}
+  \footnotesize \texttt{SELECT key, COUNT(*) FROM r GROUP BY key}
+\end{frame}
+
+% ===========================================================================
+\begin{frame}{Performance: distinct}
+  \begin{center}
+  \begin{tikzpicture}
+    \begin{axis}[benchplot,
+        xtick={0,50,100,150,195},
+      ]
+      \addplot+[bar shift=-5pt, fill=kugreen!70, draw=kugreen] coordinates {
+        (1,0.118) (4,0.437) (16,1.754) (64,6.660)
+        (128,13.976) (195,23.704)
+      };
+      \addplot+[bar shift=0pt, fill=kugreen!25, draw=kugreen] coordinates {
+        (1,0.840) (4,3.370) (16,13.800) (64,57.918)
+        (128,114.855) (195,178.170)
+      };
+      \addplot+[bar shift=5pt, fill=gray!60, draw=black] coordinates {
+        (1,0.087) (4,0.347) (16,1.387) (64,5.486)
+        (128,11.549) (195,21.116)
+      };
+      \legend{SQLite query, SQLite load, SQL4}
+    \end{axis}
+  \end{tikzpicture}
+  \end{center}
+  \footnotesize \texttt{SELECT DISTINCT key FROM r}
+\end{frame}
+
+\end{document}
