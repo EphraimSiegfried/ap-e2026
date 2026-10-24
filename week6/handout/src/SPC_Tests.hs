@@ -11,4 +11,14 @@ tests =
   localOption (mkTimeout 3000000) $
     testGroup
       "SPC"
-      []
+      [ testCase "ping" $ do
+          spc <- startSPC
+          x <- pingSPC spc
+          x @?= 0,
+        testCase "state change" $ do
+          spc <- startSPC
+          _ <- pingSPC spc
+          _ <- pingSPC spc
+          x <- pingSPC spc
+          x @?= 2
+      ]
