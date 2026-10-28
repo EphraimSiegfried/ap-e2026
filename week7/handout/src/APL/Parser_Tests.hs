@@ -27,5 +27,8 @@ tests =
     "Parsing"
     [ -- Example tests
       parserTest "x+y" $ Add (Var "x") (Var "y"),
+      parserTest "(2+2,3)" $ Tuple [Add (CstInt 2) (CstInt 2), (CstInt 3)],
+      parserTest "((2,1),3)" $ Tuple [Tuple [(CstInt 2), (CstInt 1)], (CstInt 3)],
+      parserTest "(2)" $ CstInt 2,
       parserTestFail "x+"
     ]

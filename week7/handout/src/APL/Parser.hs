@@ -70,8 +70,16 @@ pAtom =
       CstBool <$> pBool,
       Var <$> lVName,
       try $ lString "(" *> pExp <* lString ")",
+      try $ lString "(" *> ((\x xs -> Tuple (x : xs)) <$> pExp <*> pExps) <* lString ")",
       KvPut <$> (lKeyword "put" *> pAtom) <*> pAtom,
       KvGet <$> (lKeyword "get" *> pAtom)
+    ]
+
+pExps :: Parser [Exp]
+pExps =
+  choice
+    [ lString "," *> ((\x -> [x]) <$> pExp),
+      lString "," *> ((\x xs -> x : xs) <$> pExp <*> pExps)
     ]
 
 pFExp :: Parser Exp

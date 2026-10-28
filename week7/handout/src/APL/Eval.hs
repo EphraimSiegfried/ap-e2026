@@ -23,6 +23,10 @@ evalIntBinOp' f e1 e2 =
 eval :: Exp -> EvalM Val
 eval (CstInt x) = pure $ ValInt x
 eval (CstBool b) = pure $ ValBool b
+eval (Tuple exps) =
+  do
+    vals <- sequence (eval <$> exps)
+    pure $ (ValTuple vals)
 eval (Var v) = do
   env <- askEnv
   case envLookup v env of
