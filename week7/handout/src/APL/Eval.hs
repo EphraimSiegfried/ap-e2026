@@ -90,3 +90,17 @@ eval (ForLoop (loopparam, initial) (iv, bound) body) = do
             localEnv (envExtend iv (ValInt i) . envExtend loopparam loop_v) $
               eval body
           loop (succ i) bound_int loop_v'
+eval (WhileLoop (loopparam, initial) cond body) = do
+  initial_v <- eval initial
+  while cond body initial_v
+  where
+    while cond body loop_v = do
+      cond' <- localEnv (envExtend loopparam loop_v) $ eval cond
+      case cond' of
+        (ValBool True) -> evalStep $ do
+          v <- localEnv (envExtend loopparam loop_v) $ evalStep $ eval body
+          while cond body v
+        (ValBool False) -> pure loop_v
+        _ -> failure "while-loop: non-boolean condition"
+eval (BothOf e1 e2) = evalBothOf (eval e1) (eval e2)
+eval (OneOf e1 e2) = evalOneOf (eval e1) (eval e2)

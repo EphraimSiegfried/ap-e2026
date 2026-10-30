@@ -40,6 +40,10 @@ tests =
         "For loop"
         (ForLoop ("x", CstInt 1) ("i", CstInt 10) (Mul (Var "x") (CstInt 2)))
         (ValInt 1024),
+      evalTest
+        "While loop"
+        (WhileLoop ("x", CstInt 1) (Eql (Var "x") (CstInt 0)) (Mul (Var "x") (CstInt 2)))
+        (ValInt 1),
       --
       -- Should work after task C.
       evalTest

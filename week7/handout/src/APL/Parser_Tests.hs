@@ -30,5 +30,9 @@ tests =
       parserTest "(2+2,3)" $ Tuple [Add (CstInt 2) (CstInt 2), (CstInt 3)],
       parserTest "((2,1),3)" $ Tuple [Tuple [(CstInt 2), (CstInt 1)], (CstInt 3)],
       parserTest "(2)" $ CstInt 2,
+      parserTest "loop p = 10 while p == 0 do p - 1" $ WhileLoop ("p", CstInt 10) (Eql (Var "p") (CstInt 0)) (Sub (Var "p") (CstInt 1)),
+      parserTest "2 || 3 " $ OneOf (CstInt 2) (CstInt 3),
+      parserTest "2 && 3 " $ BothOf (CstInt 2) (CstInt 3),
+      parserTest "2 + 3 && 3 " $ Add (CstInt 2) (BothOf (CstInt 3) (CstInt 3)),
       parserTestFail "x+"
     ]

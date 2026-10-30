@@ -34,7 +34,9 @@ keywords =
     "let",
     "in",
     "put",
-    "get"
+    "get",
+    "while",
+    "do"
   ]
 
 lVName :: Parser VName
@@ -100,6 +102,10 @@ pLExp =
         <$> (lKeyword "if" *> pExp)
         <*> (lKeyword "then" *> pExp)
         <*> (lKeyword "else" *> pExp),
+      WhileLoop
+        <$> ((,) <$> (lKeyword "loop" *> lVName) <*> (lString "=" *> pExp))
+        <*> (lKeyword "while" *> pExp)
+        <*> (lKeyword "do" *> pExp),
       Lambda
         <$> (lString "\\" *> lVName)
         <*> (lString "->" *> pExp),
@@ -110,18 +116,34 @@ pLExp =
       pFExp
     ]
 
+pExp4 :: Parser Exp
+pExp4 = pLExp >>= chain
+  where
+    chain x =
+      choice
+        [ do
+            lString "||"
+            y <- pLExp
+            chain $ OneOf x y,
+          do
+            lString "&&"
+            y <- pLExp
+            chain $ BothOf x y,
+          pure x
+        ]
+
 pExp3 :: Parser Exp
-pExp3 = pLExp >>= chain
+pExp3 = pExp4 >>= chain
   where
     chain x =
       choice
         [ do
             lString "*"
-            y <- pLExp
+            y <- pExp4
             chain $ Mul x y,
           do
             lString "/"
-            y <- pLExp
+            y <- pExp4
             chain $ Div x y,
           pure x
         ]
