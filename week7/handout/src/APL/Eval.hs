@@ -63,7 +63,7 @@ eval (Apply e1 e2) = do
   v2 <- eval e2
   case (v1, v2) of
     (ValFun f_env var body, arg) ->
-      localEnv (const $ envExtend var arg f_env) $ eval body
+      localEnv (const $ envExtend var arg f_env) $ evalStep $ eval body
     (_, _) ->
       failure "Cannot apply non-function"
 eval (KvPut key_e val_e) = do
@@ -88,7 +88,8 @@ eval (ForLoop (loopparam, initial) (iv, bound) body) = do
       | otherwise = do
           loop_v' <-
             localEnv (envExtend iv (ValInt i) . envExtend loopparam loop_v) $
-              eval body
+              evalStep $
+                eval body
           loop (succ i) bound_int loop_v'
 eval (WhileLoop (loopparam, initial) cond body) = do
   initial_v <- eval initial

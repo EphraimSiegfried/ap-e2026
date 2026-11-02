@@ -32,7 +32,24 @@ stateInitial = []
 --
 -- * Otherwise evaluate both one step.
 step :: Env -> State -> EvalM a -> (EvalM a, State)
-step = undefined
+step e s (Free (StepOp c)) = (c, s)
+step e s (Free (BothOfOp e1 e2 c)) = case (e1, e2) of
+  (Free (ErrorOp e), _) -> (Free (ErrorOp e), s)
+  (_, Free (ErrorOp e)) -> (Free (ErrorOp e), s)
+  (Pure x, Pure y) -> step e s (c (ValTuple [x, y]))
+  (x, y) ->
+    let (x', _) = step e s x
+        (y', s'') = step e s y
+     in (Free (BothOfOp x' y' c), s'')
+step e s (Free (OneOfOp e1 e2 c)) = case (e1, e2) of
+  (Free (ErrorOp e), Free (ErrorOp _)) -> (Free (ErrorOp e), s)
+  (Pure x, _) -> step e s (c x)
+  (_, Pure y) -> step e s (c y)
+  (x, y) ->
+    let (x', _) = step e s x
+        (y', s'') = step e s y
+     in (Free (OneOfOp x' y' c), s'')
+step e s _ = undefined
 
 runEval :: EvalM a -> Either Error a
 runEval = undefined
